@@ -7,8 +7,7 @@
 #define CCW  1000
 
 Servo myServo;
-
-char c;
+float t = 0;
 
 void setup()
 {
@@ -19,22 +18,10 @@ void setup()
 
 void loop()
 {
-    while (Serial.available() > 0) {
-        c = Serial.read();
-
-        switch (c) {
-            case 'c':
-                myServo.writeMicroseconds(CW);
-                Serial.println("Derecha");
-                break;
-            case 'w':
-                myServo.writeMicroseconds(CCW);
-                Serial.println("Izquierda");
-                break;
-            case 's':
-                myServo.writeMicroseconds(STOP);
-                Serial.println("Detenido");
-                break;
-        }
-    }
+  t+=0.1;
+  int y = (int) 1250*sin(t)+1250;
+  myServo.writeMicroseconds(y);
+  Serial.print("Vel: ");
+  Serial.println(y);
+  delay(100);
 }
