@@ -23,5 +23,5 @@ void loop()
   myServo.writeMicroseconds(y);
   Serial.print("Vel: ");
   Serial.println(y);
-  delay(100);
+  delay(500);
 }
