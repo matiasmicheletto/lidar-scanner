@@ -5,19 +5,17 @@ VL53L0X sensor;
 
 void setup()
 {
-  Serial.begin(57600);
+  Serial.begin(9600);
   Wire.begin();
-
   sensor.init();
-  sensor.setTimeout(300);
-  sensor.startContinuous();
-
-  Serial.println("Inicializacion terminada");
+  sensor.setTimeout(500);
+  sensor.setMeasurementTimingBudget(200000); // Modo high accuracy
 }
 
 void loop()
 {
-  Serial.print(sensor.readRangeContinuousMillimeters());
+  Serial.print(sensor.readRangeSingleMillimeters());
   if (sensor.timeoutOccurred()) { Serial.print(" TIMEOUT"); }
   Serial.println();
+  delay(500);
 }
