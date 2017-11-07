@@ -1,5 +1,4 @@
-#include <Arduino.h>
-#include <BYJ48.h>
+#include "BYJ48.h"
 
 BYJ48::BYJ48(int In1, int In2, int In3, int In4){
     // Numero de pines de salida

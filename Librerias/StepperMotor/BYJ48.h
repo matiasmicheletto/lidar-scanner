@@ -1,6 +1,8 @@
 #ifndef BYJ48_h
 #define BYJ48_h
 
+#include <Arduino.h>
+
 class BYJ48 {
 public:
     BYJ48(int In1, int In2, int In3, int In4); // Constructor donde se indican los pines
