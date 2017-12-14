@@ -11,16 +11,6 @@ const boolean BYJ48::sequences[8][4] = {
                       {true, true, false, false},
                       {true, false, false, false },
                       {true, false, false, true}
-                      /* full-step low torque 8-11
-                      {false, false, false, true },
-                      {false, false, true, false },
-                      {false, true, false, false },
-                      {true, false, false, false },
-                      // full-step high torque 12-15
-                      {false, false, true, true },
-                      {false, true, true, false },
-                      {true, true, false, false },
-                      {true, false, false, true }*/
                     };
 
 BYJ48::BYJ48(int In1, int In2, int In3, int In4){

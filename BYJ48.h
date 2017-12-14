@@ -7,6 +7,8 @@ class BYJ48 {
 public:
     BYJ48(int In1, int In2, int In3, int In4); // Constructor donde se indican los pines
 
+    void enable();                             // Energizar (frenar)
+    void disable();                            // Desenergizar
     void stepCW();                             // Avanzar un step
     void stepCCW();                            // Retroceder un step
 

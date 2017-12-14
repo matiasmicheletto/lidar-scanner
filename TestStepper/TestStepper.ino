@@ -7,12 +7,12 @@ void setup(){
 }
 
 void loop(){
-  for(int j = 2000; j>0; j-=100){
-    for(int i = 0; i<5000; i++){
-      motor.stepCW();
-      delayMicroseconds(j);
-    }
-    Serial.print("Velocidad actual: ");
-    Serial.println(j);
+  for(int step = 0; step < 4096; step++){
+    motor.stepCW();
+    delay(10);
+  }
+  for(int step = 0; step < 4096; step++){
+    motor.stepCCW();
+    delay(1);
   }
 }
