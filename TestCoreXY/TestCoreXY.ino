@@ -1,5 +1,7 @@
 #include "BYJ48.h"
 
+// Movimiento izquierda, abajo, arriba y derecha
+
 BYJ48 motor1(8,9,10,11);
 BYJ48 motor2(4,5,6,7);
 
