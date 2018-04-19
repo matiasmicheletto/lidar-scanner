@@ -15,8 +15,11 @@
 VL53L0X sensor;
 
 // Motores
-BYJ48 motor1(8,9,10,11);
-BYJ48 motor2(4,5,6,7);
+//BYJ48 motor1(8,9,10,11);
+//BYJ48 motor2(4,5,6,7);
+
+BYJ48 motor1(11,10,9,8);
+BYJ48 motor2(7,6,5,4);
 
 // Cola de setpoints
 SPQueue *queue = 0;
@@ -24,7 +27,7 @@ SPQueue *queue = 0;
 int pos[2] = {MAXPOSX,MAXPOSY}; // Posicion inicial del sensor (se asume)
 int* sp; // Setpoint (inicialmente debe ester en 0,0)
 int vSweep = 500; // Pasos de separacion entre cada pasada horizontal (divisor de MAXPOSY)
-
+boolean scanning = false;
 
 void setup(){
   Serial.begin(9600); // Inicializar interface uart (para bluetooth o usb)
@@ -51,7 +54,7 @@ void setup(){
   TCCR2A = 0; // Normal operation
   TCCR2B = 0; // Normal operation
   TCNT2 = 0; // Inicializar en 0
-  OCR2A = 16; // Registro de comparacion = 16MHz/1024/1kHz ()
+  OCR2A = 11; // Registro de comparacion = 16MHz/1024/freq
   TCCR2A |= (1 << WGM21); // Modo CTC
   TCCR2B |= (1 << CS20); // 1024 prescaler
   TCCR2B |= (1 << CS21); // 1024 prescaler
@@ -65,6 +68,21 @@ void setup(){
 
   // Encender led de status
   digitalWrite(OK_PIN,HIGH);
+
+  // Configuracion del modulo
+  /*
+  delay(1000);
+  Serial.println("AT");
+  delay(200);
+  Serial.println("AT+ROLE0");
+  delay(200);
+  Serial.println("AT+UUID0xFFE0");
+  delay(200);
+  Serial.println("AT+CHAR0xFFE1");
+  delay(200);
+  Serial.println("AT+NAMEScanner");
+  delay(200);
+  */
 }
 
 void es1_activated()
@@ -80,7 +98,7 @@ void es2_activated()
 }
 
 ISR(TIMER2_COMPA_vect)
-// Interrupcion por timer 2 (10 ms) - Control de motores
+// Interrupcion por timer 2 (1 ms) - Control de motores
 {
   if(queue == 0) return; // No hacer nada si el objeto no esta creado
 
@@ -90,6 +108,7 @@ ISR(TIMER2_COMPA_vect)
     else{ // Si no hay mas setpoints, apagar steppers y salir
       motor1.disable();
       motor2.disable();
+      scanning = false;
       return;
     }
   }
@@ -106,14 +125,14 @@ ISR(TIMER2_COMPA_vect)
     return;
   }
   if(pos[1] < sp[1]){ // Mover arriba
-    motor1.stepCCW();
-    motor2.stepCW();
+    motor1.stepCW();
+    motor2.stepCCW();
     pos[1]++;
     return;
   }
   if(pos[1] > sp[1]){ // Mover abajo
-    motor1.stepCW();
-    motor2.stepCCW();
+    motor1.stepCCW();
+    motor2.stepCW();
     pos[1]--;
     return;
   }
@@ -125,9 +144,9 @@ void scanningQueue()
   // Borrar y generar lista
   if(queue != 0)
     delete queue;
-  queue = new SPQueue(2*round(MAXPOSY/vSweep)+10); // Inicializar cantidad de setpoints +10 por seguridad
+  queue = new SPQueue(2*round(MAXPOSY/vSweep)+5); // Inicializar cantidad de setpoints +5 por seguridad
 
-  for(int vPos = 0; vPos <= MAXPOSY;) // Para cada pasada (incrementar dentro del loop)
+  for(int vPos = 0; vPos <= MAXPOSY-vSweep;) // Para cada pasada (incrementar dentro del loop)
   {
     // Ir de derecha a izquierda
     queue->push(0,vPos);
@@ -147,7 +166,7 @@ void allStop()
   if(queue != 0)
     delete queue;
   queue = new SPQueue(2); // Se precisa solo un elemento, pero agrego otro por seguridad
-  queue->push(pos[0],pos[1]); // Ir al origen
+  queue->push(pos[0],pos[1]);
   sp = queue->pop();  
 }
 
@@ -178,9 +197,11 @@ void serialEvent()
   String arg;
   switch((char) Serial.read()){
    case 'a': // Iniciar escaneo
+     scanning = true;
      scanningQueue();
      break;
    case 'b': // Detener
+     scanning = false;
      allStop();
      break;
    case 'c': // Volver a origen
@@ -192,13 +213,14 @@ void serialEvent()
 }
 
 void loop(){
-  // Mostrar posision y lectura por serie
-  Serial.print(pos[0]);
-  Serial.print(",");
-  Serial.print(pos[1]);
-  Serial.print(",");
-//  if (sensor.timeoutOccurred()) { Serial.println("ST"); }
-  Serial.println(sensor.readRangeSingleMillimeters());
-
+  if(scanning){
+    // Mostrar posision y lectura por serie
+    Serial.print(pos[0]);
+    Serial.print(",");
+    Serial.print(pos[1]);
+    Serial.print(",");
+    //  if (sensor.timeoutOccurred()) { Serial.println("ST"); }
+    Serial.println(sensor.readRangeSingleMillimeters());
+  }
   delay(500);
 }

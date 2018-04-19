@@ -1,25 +1,22 @@
-// Ejemplo para encender o apagar el pin digital 5 via bluetooth con los comandos 'r' y 's'
+
+#include <SoftwareSerial.h>
+
+SoftwareSerial mySerial(2, 3); // RX, TX
 
 void setup() {
   Serial.begin(9600);
-  pinMode(5,OUTPUT);
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for native USB port only
+  }
+  Serial.println("Start");
+  mySerial.begin(9600);  
 }
 
-void loop() {    
-  if (Serial.available()){
-    delay(10);
-    char c = Serial.read();
-    switch(c){
-      case 'r': 
-        digitalWrite(5,HIGH);
-        Serial.println("Encendido");
-        break;
-      case 's': 
-        digitalWrite(5,LOW);
-        Serial.println("Apagado");
-        break;
-      default:
-        break;        
-    }
+void loop() { // run over and over
+  if (mySerial.available()) {
+    Serial.write(mySerial.read());
+  }
+  if (Serial.available()) {
+    mySerial.write(Serial.read());
   }
 }
