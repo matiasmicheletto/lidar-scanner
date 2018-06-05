@@ -20,12 +20,13 @@
 #include <QStringList>
 #include <QLabel>
 #include <QTimer>
+#include <QTime>
+#include <QFile>
+#include <QDir>
 
 #include "qextserialport.h"
 #include "qextserialenumerator.h"
 
-enum ControlMode{AUTO, MANUAL};
-enum MotorState{STOP, LEFT, RIGHT};
 
 class MainWindow : public QMainWindow
 {
@@ -35,16 +36,9 @@ public:
     ~MainWindow();
 
     // Funciones de control para el micro
-    void getSystemState();
-    void toggleManualAuto();
-    void moveDomeRight();
-    void moveDomeLeft();
-    void stopDome();    
-
-    ControlMode controlMode;
-    MotorState motorState;
-    int actualStep;
-    int setpoint;
+    void startScanning();
+    void stopScanning();
+    void goHome();
 
 signals:
     void updateDisplay(QString);
@@ -54,13 +48,12 @@ private slots:
     void onDeviceDiscovered();
     void onDeviceRemoved();
     void connectBtnClicked();
-    void forcePosBtnClicked();
-    void changeSetpoint(int val);
     void onTimerTimeout();
 
 private:
     void loadPortConfiguration();
     void changeActualPos(int val);
+    void saveDataReceived();
 
     bool strAppending;
     QextSerialPort *serialPort;
@@ -80,10 +73,9 @@ public:
 
 public slots:
     void updateDisplay(QString val);
-
-private slots:
-    void dialChanged(int val);
-    void modeBtnPressed();
+    void greenBtnPressed();
+    void redBtnPressed();
+    void blueBtnPressed();
 
 private:
     MainWindow *mainWindow;

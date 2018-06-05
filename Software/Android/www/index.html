@@ -1,0 +1,103 @@
+<!--
+  ------------------------------------------------------------------------------
+  -  Name        : index.html
+  -  Author      : Matias Micheletto
+  -  Version     : 1.0
+  -  Copyright   : GPLv3
+  -  Description : Software para control de scanner lidar de cobertura vegetal
+  ------------------------------------------------------------------------------
+  -
+  -  Copyright (c) 2018
+  -  Matias Micheletto <matias.micheletto@uns.edu.ar>
+  -  Departamento de Ingeniería Eléctrica - Universidad Nacional del Sur
+  -  Laboratorio de Sistemas Digitales
+  -
+  -
+  -  This program is free software: you can redistribute it and/or modify
+  -  it under the terms of the GNU General Public License as published by
+  -  the Free Software Foundation, either version 3 of the License.
+  -
+  -  This program is distributed in the hope that it will be useful,
+  -  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  -  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  -  GNU General Public License for more details.
+  -
+  -  You should have received a copy of the GNU General Public License
+  -  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  -
+  ------------------------------------------------------------------------------
+-->
+
+<!DOCTYPE html>
+<html>
+    <head>        
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: gap: https://ssl.gstatic.com 'unsafe-eval'; style-src 'self' 'unsafe-inline'; media-src *; img-src 'self' data: content:;">
+        <meta charset="UTF-8">
+        <meta name="format-detection" content="telephone=no">
+        <meta name="msapplication-tap-highlight" content="no">
+        <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width">
+
+        <link type="text/css" rel="stylesheet" href="css/icons.css">
+        <link type="text/css" rel="stylesheet" href="css/materialize.min.css" media="screen,projection"/>        
+        <script type="text/javascript" src="js/materialize.min.js"></script>
+
+        <title>Scanner App</title>
+    </head>
+
+    <body>
+        <div class="app">
+
+            <center>
+
+                <div class="container">            
+
+                    <div class="row">
+
+                        <div class="tab_header col s12">
+                          <ul class="tabs">
+                            <li class="tab col s6"><a class="active" href="#devices_table">Dispositivos</a></li>
+                            <li class="tab col s6"><a href="#buttons">Control</a></li>
+                            <li class="tab col s6"><a href="#logs_table">Registros</a></li>
+                          </ul>
+                        </div>
+
+                        <div id="devices_table" class="col s12">
+                            <table id="bleDevices">
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Dist. (m)</th>
+                                    <th>Acción</th>                    
+                                </tr>                  
+                            </table>
+                        </div>                    
+
+                        <div id="buttons" class="col s12">
+                            <div class="row"><a id="btnStart" class="waves-effect waves-light btn blue"><i class="material-icons left">play_arrow</i>Iniciar</a></div>
+                            <div class="row"><a id="btnStop" class="waves-effect waves-light btn red"><i class="material-icons left">stop</i>Detener</a></div>
+                            <div class="row"><a id="btnHome" class="waves-effect waves-light btn green"><i class="material-icons left">home</i>Origen</a></div>
+                        </div>
+                    
+                        <div id="logs_table" class="col s12">
+                            <table id="logs">
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th></th>
+                                    <th></th>                                    
+                                </tr>
+                            </table>
+                        </div>  
+
+                        <div> 
+                            <p id="statusMsg">Mensajes</p>
+                        </div>
+
+                </div>
+                
+            </center>
+        </div>
+
+        <script type="text/javascript" src="cordova.js"></script>
+        <script type="text/javascript" src="js/index.js"></script>
+    </body>
+
+</html>

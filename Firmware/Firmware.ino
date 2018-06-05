@@ -8,8 +8,8 @@
 #define ES_PIN2 3 // Pin para endstop de direccion Y
 #define OK_PIN A0 // Pin para led de encendido
 #define ERR_PIN A1 // Pin para led de errores
-#define MAXPOSX 14800 // Maxima posicion a desplazarse en X
-#define MAXPOSY 14000 // Maxima posicion a desplazarse en Y
+#define MAXPOSX 14900 // Maxima posicion a desplazarse en X
+#define MAXPOSY 14400 // Maxima posicion a desplazarse en Y
 
 // Sensor laser
 VL53L0X sensor;
@@ -26,7 +26,7 @@ SPQueue *queue = 0;
 
 int pos[2] = {MAXPOSX,MAXPOSY}; // Posicion inicial del sensor (se asume)
 int* sp; // Setpoint (inicialmente debe ester en 0,0)
-int vSweep = 500; // Pasos de separacion entre cada pasada horizontal (divisor de MAXPOSY)
+int vSweep = 200; // Pasos de separacion entre cada pasada horizontal (divisor de MAXPOSY)
 boolean scanning = false;
 
 void setup(){
@@ -54,7 +54,7 @@ void setup(){
   TCCR2A = 0; // Normal operation
   TCCR2B = 0; // Normal operation
   TCNT2 = 0; // Inicializar en 0
-  OCR2A = 11; // Registro de comparacion = 16MHz/1024/freq
+  OCR2A = 12; // Registro de comparacion = 16MHz/1024/freq
   TCCR2A |= (1 << WGM21); // Modo CTC
   TCCR2B |= (1 << CS20); // 1024 prescaler
   TCCR2B |= (1 << CS21); // 1024 prescaler
@@ -69,18 +69,19 @@ void setup(){
   // Encender led de status
   digitalWrite(OK_PIN,HIGH);
 
-  // Configuracion del modulo
+  
   /*
+  // Configuracion del modulo
   delay(1000);
   Serial.println("AT");
   delay(200);
-  Serial.println("AT+ROLE0");
+  Serial.println("AT+ROLE0"); // Slave
   delay(200);
-  Serial.println("AT+UUID0xFFE0");
+  Serial.println("AT+UUID0xFFE0"); // UUID
   delay(200);
-  Serial.println("AT+CHAR0xFFE1");
+  Serial.println("AT+CHAR0xFFE1"); // Characteristic
   delay(200);
-  Serial.println("AT+NAMEScanner");
+  Serial.println("AT+NAMEScanner"); // Name
   delay(200);
   */
 }
@@ -141,6 +142,7 @@ ISR(TIMER2_COMPA_vect)
 void scanningQueue()
 // Crear cola de posiciones para barrido izq-der y abajo-arriba
 {
+  scanning = false;
   // Borrar y generar lista
   if(queue != 0)
     delete queue;
@@ -158,11 +160,13 @@ void scanningQueue()
     vPos+=vSweep; // Siguiente pasada
   }
   sp = queue->pop(); // Asignar el primero para empezar
+  scanning = true;
 }
 
 void allStop()
 // Detener y borrar cola de setpoints
 {
+  scanning = false;
   if(queue != 0)
     delete queue;
   queue = new SPQueue(2); // Se precisa solo un elemento, pero agrego otro por seguridad
@@ -173,6 +177,7 @@ void allStop()
 void goHome()
 // Volver al 0,0
 {
+  scanning = false;
   if(queue != 0)
     delete queue;
   queue = new SPQueue(2); // Se precisa solo un elemento, pero agrego otro por seguridad
@@ -196,16 +201,17 @@ void serialEvent()
 {
   String arg;
   switch((char) Serial.read()){
-   case 'a': // Iniciar escaneo
-     scanning = true;
+   case 'a': // Iniciar escaneo     
      scanningQueue();
+     Serial.println("a"); // Ack
      break;
-   case 'b': // Detener
-     scanning = false;
+   case 'b': // Detener     
      allStop();
+     Serial.println("b"); // Ack
      break;
-   case 'c': // Volver a origen
+   case 'c': // Volver a origen     
      goHome();
+     Serial.println("c"); // Ack
      break;
    default: 
      break;
@@ -222,5 +228,5 @@ void loop(){
     //  if (sensor.timeoutOccurred()) { Serial.println("ST"); }
     Serial.println(sensor.readRangeSingleMillimeters());
   }
-  delay(500);
+  delay(200);
 }

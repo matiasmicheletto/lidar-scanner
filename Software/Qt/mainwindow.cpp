@@ -15,28 +15,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     connectBtn->setToolTip("Conectar con el puerto seleccionado");
     connect(connectBtn,SIGNAL(clicked(bool)),this,SLOT(connectBtnClicked()));
 
-    // Selector de setpoint
-    QLabel *spLabel = new QLabel("Setpoint:");
-    QSpinBox *spSpinBox = new QSpinBox;
-    spSpinBox->setRange(0,359);
-    spSpinBox->setToolTip("Setpoint");
-    spSpinBox->setMaximumWidth(70);
-    connect(spSpinBox, SIGNAL(valueChanged(int)), this, SLOT(changeSetpoint(int)));
-
-    // Boton para corregir la posicion de la cupula
-    QPushButton *forcePosBtn = new QPushButton("Posición...");
-    forcePosBtn->setToolTip("Corregir posición");
-    connect(forcePosBtn,SIGNAL(clicked(bool)), this, SLOT(forcePosBtnClicked()));
-
     // Layout para los controles de seleccion de puerto
     QToolBar *toolBar = new QToolBar("Controles");
     toolBar->addWidget(portSelect);
     toolBar->addWidget(connectBtn);
     toolBar->addSeparator();
-    toolBar->addWidget(spLabel);
-    toolBar->addWidget(spSpinBox);
-    toolBar->addSeparator();
-    toolBar->addWidget(forcePosBtn);
 
     // Barra de estado y ventana de mensajes de error
     statusBar = new QStatusBar;
@@ -80,62 +63,30 @@ MainWindow::~MainWindow()
 }
 
 
-void MainWindow::getSystemState()
-// Solicitar variables del sistema
-{
-    if(serialPort != 0)
-        serialPort->write("a\n");
-}
-
-void MainWindow::toggleManualAuto()
-// Alternar modo de control manual o automatico 
-{
-    if(serialPort != 0)
-        serialPort->write("b\n");
-}
-
-void MainWindow::moveDomeRight()
-// Activar motor de la cupula
-{
-    if(serialPort != 0)
-        serialPort->write("c\n");
-}
-
-void MainWindow::moveDomeLeft()
-// Activar motor de la cupula
-{
-    if(serialPort != 0)
-        serialPort->write("d\n");
-}
-
-void MainWindow::stopDome()
-// Apagar motor
-{
-    if(serialPort != 0)
-        serialPort->write("e\n");
-}
-
-void MainWindow::changeSetpoint(int val)
-// Actualizar el setpoint
+void MainWindow::startScanning()
+// Iniciar el escaneo del suelo
 {
     if(serialPort != 0){
-        if(val < 0) val = 0;
-        else if( val > 360 ) val = 359;
-        QString strToSend = "f"+QString().setNum(val)+"\n";
-        serialPort->write(strToSend.toStdString().c_str());
-        statusBar->showMessage("Cambiando setpoint: "+QString().setNum(val)+"...");
+        serialPort->write("a\n");
+        statusBar->showMessage("Escaneando...");
     }
 }
 
-void MainWindow::changeActualPos(int val)
-// Forzar valor de la posicion actual
+void MainWindow::stopScanning()
+// Detener el escaneo
 {
     if(serialPort != 0){
-        if(val < 0) val = 0;
-        else if( val > 360 ) val = 359;
-        QString strToSend = "g"+QString().setNum(val)+"\n";
-        serialPort->write(strToSend.toStdString().c_str());
-        statusBar->showMessage("Cambiando posicion: "+QString().setNum(val)+"...");
+        serialPort->write("b\n");
+        statusBar->showMessage("Detenido");
+    }
+}
+
+void MainWindow::goHome()
+// Volver al inicio
+{
+    if(serialPort != 0){
+        serialPort->write("c\n");
+        statusBar->showMessage("Detenido");
     }
 }
 
@@ -229,47 +180,30 @@ void MainWindow::onDataAvailable()
     for(int i = 0; i < bytesAvailable; i++){ // Para cada byte disponible
         c = serialPort->read(1).at(0); // Leer un byte
         if( c == '\n'){ // Fin de linea
-            if( strAppending ){ // Si se estaba recibiendo una cadena de caracteres
-                emit updateDisplay(strReceived);
-                strReceived.clear(); // Borrar string
-                strAppending = false; // Marcar fin de cadena de caracteres
-            }
-        }else{ // Si no es fin de linea
-            if( strAppending ) // Si se esta recibiendo variables del sistema de control
-                strReceived.append(c); // Agregar caracteres a una cadena
-            else
-                switch(c){
-                case 'a': // Ack, variables del sistema de control
-                    strAppending = true; // Marcar para concatenar los siguientes caracteres
-                    break;
-                case 'b': // Ack cambio de modo automatico/manual
-                    controlMode = controlMode == AUTO ? MANUAL : AUTO; // Alternar modo
-                    if(controlMode == AUTO)
-                        statusBar->showMessage("Cambio a modo automático.");
-                    else
-                        statusBar->showMessage("Cambio a modo manual.");
-                    break;
-                case 'c': // Ack mover hacia la derecha
-                    statusBar->showMessage("Moviendo cúpula hacia la derecha.");
-                    break;
-                case 'd': // Ack mover hacia la izquierda
-                    statusBar->showMessage("Moviendo cúpula hacia la izquierda.");
-                    break;
-                case 'e': // Ack detener motor
-                    statusBar->showMessage("Deteniendo motor.");
-                    break;
-                case 'f': // Ack cambio de setpoint
-                    statusBar->showMessage("Nuevo setpoint ingresado.");
-                    break;
-                case 'g':
-                    statusBar->showMessage("Posicion actualizada.");
-                    break;
-                case '#': // Error en el comando
-                    break;
-                }
-        }
+            emit updateDisplay(strReceived);
+            // Guardar dato recibido en archivo de salida
+            strAppending = false; // Marcar fin de cadena de caracteres
+            saveDataReceived();
+            strReceived.clear(); // Borrar string
+        }else // Si no es fin de linea
+            strReceived.append(c); // Agregar caracteres a una cadena
     }
 }
+
+void MainWindow::saveDataReceived()
+// Guardar dato recibido
+{
+    // Guardar en registro el dato recibido
+    QString registerFileName = QDir::currentPath()+"/RegScanner.csv";
+    QFile *file = new QFile(registerFileName);
+    file->open(QIODevice::Append | QIODevice::Text);
+    QTextStream textStream(file);
+    // Guardar dato
+    textStream << strReceived; // Dato con estampa de tiempo
+    file->close(); // Cerrar archivo del disco
+    delete(file); // Eliminar puntero
+}
+
 
 
 void MainWindow::onDeviceDiscovered()
@@ -324,24 +258,13 @@ void MainWindow::connectBtnClicked()
 }
 
 
-void MainWindow::forcePosBtnClicked()
-// SLOT: Boton para corregir la posicion de la cupula
-{
-    // Mostrar dialogo para ingresar el valor de la posicion deseada
-    bool ok;
-    int val = QInputDialog::getInt(this, tr("Corregir posición"),
-                                    tr("Posición actual:"), 0, 0, 359, 1, &ok);
-    if (ok && val >= 0 && val < 360)
-       changeActualPos(val);
-    else
-       statusBar->showMessage("No se puede corregir la posición");
-}
-
 void MainWindow::onTimerTimeout()
 // SLOT: Disparo del timer
 {
-    getSystemState();
+
 }
+
+
 
 
 /// MAINWIDGET ///
@@ -352,30 +275,47 @@ MainWidget::MainWidget(MainWindow *mainW, QWidget *parent) : QWidget(parent)
 
     /// CONTROLES ///
     // Estilo de los controles
-    this->setStyleSheet("QPushButton{background:#12BA1A;"
+    this->setStyleSheet("QPushButton#startBtn{background:#12BA1A;"
                             "border-radius:15px;"
                             "border: 3px solid grey}"
-                        "QPushButton:pressed{background:#0A700F;"
+                        "QPushButton#startBtn:pressed{background:#0A700F;"
+                            "border-radius:15px;"
+                            "border: 3px solid grey}"
+                        "QPushButton#stopBtn{background:#FF0000;"
+                            "border-radius:15px;"
+                            "border: 3px solid grey}"
+                        "QPushButton#stopBtn:pressed{background:#610B0B;"
+                            "border-radius:15px;"
+                            "border: 3px solid grey}"
+                        "QPushButton#homeBtn{background:#013ADF;"
+                            "border-radius:15px;"
+                            "border: 3px solid grey}"
+                        "QPushButton#homeBtn:pressed{background:#0A122A;"
                             "border-radius:15px;"
                             "border: 3px solid grey}"
                         "QDial{background-color:red}"
-                        "QTextEdit{background:#68D651;"
-                            "color:black}");
+                        "QTextEdit{background:black;"
+                            "color:white}");
 
     // Selección de tipo de modo
-    QPushButton *modeBtn = new QPushButton;
-    modeBtn->setFixedSize(30,30);
-    modeBtn->setToolTip("Alternar modo automático/manual");
-    connect(modeBtn, SIGNAL(clicked(bool)), this, SLOT(modeBtnPressed()));
+    QPushButton *startBtn = new QPushButton;
+    startBtn->setObjectName("startBtn");
+    startBtn->setFixedSize(30,30);
+    startBtn->setToolTip("Iniciar escaneo");
+    connect(startBtn, SIGNAL(clicked(bool)), this, SLOT(greenBtnPressed()));
 
-    // Switch de control manual
-    QDial *dial = new QDial;
-    dial->setSingleStep(1);
-    dial->setRange(-1,1);
-    dial->setFixedSize(50,50);
-    dial->setNotchesVisible(true);
-    dial->setToolTip("Control manual del motor");
-    connect(dial, SIGNAL(valueChanged(int)), this, SLOT(dialChanged(int)));
+    QPushButton *stopBtn = new QPushButton;
+    stopBtn->setObjectName("stopBtn");
+    stopBtn->setFixedSize(30,30);
+    stopBtn->setToolTip("Detener escaneo");
+    connect(stopBtn, SIGNAL(clicked(bool)), this, SLOT(redBtnPressed()));
+
+    QPushButton *homeBtn = new QPushButton;
+    homeBtn->setObjectName("homeBtn");
+    homeBtn->setFixedSize(30,30);
+    homeBtn->setToolTip("Volver al inicio");
+    connect(homeBtn, SIGNAL(clicked(bool)), this, SLOT(blueBtnPressed()));
+
 
     // Texto informativo
     display = new QTextEdit;
@@ -385,16 +325,16 @@ MainWidget::MainWidget(MainWindow *mainW, QWidget *parent) : QWidget(parent)
 
     /// LAYOUT ///
     QVBoxLayout *vBoxLayout = new QVBoxLayout;
-    vBoxLayout->addWidget(modeBtn);
-    vBoxLayout->addWidget(dial);
-    vBoxLayout->setAlignment(modeBtn, Qt::AlignHCenter);
+    vBoxLayout->addWidget(startBtn);
+    vBoxLayout->addWidget(stopBtn);
+    vBoxLayout->addWidget(homeBtn);
+    vBoxLayout->setAlignment(startBtn, Qt::AlignHCenter);
 
     QHBoxLayout *layout = new QHBoxLayout;
     layout->addLayout(vBoxLayout);
     layout->addWidget(display);
 
     this->setLayout(layout);
-    updateDisplay("t 85 110 r"); // Quitar luego
 }
 
 
@@ -405,62 +345,29 @@ MainWidget::~MainWidget()
 }
 
 void MainWidget::updateDisplay(QString val)
-// SLOT: Actualizar variables de estado y texto informativo.
-// Formato argumento: modo pos sp motor. Ejemplo: t 120 120 s
-// modo: t->AUTO, m->MANUAL
-// pos: int(0..359)
-// sp: int(0..359)
-// motor: s->apagado, r->derecha, l->izquierda
 {
-    QStringList args = val.split(" "); // Separar argumentos
-    QStringList lines; // Lineas del display
-
-    // Modo de control
-    if(args.at(0) == "t"){
-        mainWindow->controlMode = AUTO;
-        lines.append("Modo: Automático");
-    }else{
-        mainWindow->controlMode = MANUAL;
-        lines.append("Modo: Manual");
-    }
-    mainWindow->actualStep = args.at(1).toInt(); // Posicion actual
-    lines.append("Posición: "+args.at(1));
-    mainWindow->setpoint = args.at(2).toInt(); // Setpoint
-    lines.append("Setpoint: "+args.at(2));
-    // Motor
-    if(args.at(3) == "s"){
-        mainWindow->motorState = STOP;
-        lines.append("Detenido");
-    }else{
-        if(args.at(3) == "r"){
-            mainWindow->motorState = RIGHT;
-            lines.append("Rot. derecha");
-        }else{
-            mainWindow->motorState = LEFT;
-            lines.append("Rot. izquierda");
-        }
-    }
-
     display->clear();
-    for(int k = 0; k < 4; k++)
-        display->append(lines.at(k));
+    QStringList lst = val.split(",");
+    display->append("X = "+lst.at(0));
+    display->append("Y = "+lst.at(1));
+    display->append("Z = "+lst.at(2));
 }
 
-void MainWidget::dialChanged(int val)
-// SLOT: Cambio de la posicion de la llave de control del motor
+void MainWidget::greenBtnPressed()
+// Al presionar el boton verde
 {
-    if(val == -1)
-        mainWindow->moveDomeLeft();
-    else if(val == 1)
-        mainWindow->moveDomeRight();
-    else
-        mainWindow->stopDome();
+    mainWindow->startScanning();
 }
 
-void MainWidget::modeBtnPressed()
-// SLOT: Boton de cambio de modo de control manual/automatico
+void MainWidget::redBtnPressed()
 {
-    mainWindow->toggleManualAuto();
+    mainWindow->stopScanning();
 }
 
+void MainWidget::blueBtnPressed()
+{
+    mainWindow->goHome();
+    display->clear();
+    display->append("Listo");
+}
 
