@@ -14,7 +14,7 @@ public:
 
 private:
     void writeStep();                          // Actualizar salida
-    int inputPins[4];                          // Numeros de los pines
+    int outputPins[4];                         // Numeros de los pines
     int currentStep;                           // Paso actual
     static const boolean sequences[8][4];      // Secuencias de pasos
 };
@@ -34,16 +34,16 @@ const boolean BYJ48::sequences[8][4] = {
 
 BYJ48::BYJ48(int In1, int In2, int In3, int In4){
     // Numero de pines de salida
-    inputPins[0] = In1;
-    inputPins[1] = In2;
-    inputPins[2] = In3;
-    inputPins[3] = In4;
+    outputPins[0] = In1;
+    outputPins[1] = In2;
+    outputPins[2] = In3;
+    outputPins[3] = In4;
 
     // Modo de pines de salida
-    pinMode(inputPins[0], OUTPUT);
-    pinMode(inputPins[1], OUTPUT);
-    pinMode(inputPins[2], OUTPUT);
-    pinMode(inputPins[3], OUTPUT);
+    pinMode(outputPins[0], OUTPUT);
+    pinMode(outputPins[1], OUTPUT);
+    pinMode(outputPins[2], OUTPUT);
+    pinMode(outputPins[3], OUTPUT);
 
     // Disponer salida en step inicial (HS)
     currentStep = 0;
@@ -57,10 +57,10 @@ void BYJ48::enable(){
 
 void BYJ48::disable(){
     // Desalimentar todas para que quede liberado
-    digitalWrite(inputPins[0], LOW);
-    digitalWrite(inputPins[1], LOW);
-    digitalWrite(inputPins[2], LOW);
-    digitalWrite(inputPins[3], LOW);
+    digitalWrite(outputPins[0], LOW);
+    digitalWrite(outputPins[1], LOW);
+    digitalWrite(outputPins[2], LOW);
+    digitalWrite(outputPins[3], LOW);
 }
 
 void BYJ48::stepCW(){
@@ -76,10 +76,10 @@ void BYJ48::stepCCW(){
 }
 
 void BYJ48::writeStep(){
-    digitalWrite(inputPins[0], sequences[currentStep][0]);
-    digitalWrite(inputPins[1], sequences[currentStep][1]);
-    digitalWrite(inputPins[2], sequences[currentStep][2]);
-    digitalWrite(inputPins[3], sequences[currentStep][3]);
+    digitalWrite(outputPins[0], sequences[currentStep][0]);
+    digitalWrite(outputPins[1], sequences[currentStep][1]);
+    digitalWrite(outputPins[2], sequences[currentStep][2]);
+    digitalWrite(outputPins[3], sequences[currentStep][3]);
 }
 
 

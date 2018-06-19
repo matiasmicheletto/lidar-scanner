@@ -45,12 +45,12 @@ SPQueue::~SPQueue()
 boolean SPQueue::push(int spX, int spY)
 // Agregar nuevo elemento a la cola
 {
-    if(items < size) // Verificar que haya espacio para mas elementos
+    if(this->items < this->size) // Verificar que haya espacio para mas elementos
     {
-      setpoints[tail][0] = spX;
-      setpoints[tail][1] = spY;
-      tail++;
-      items++;
+      this->setpoints[tail][0] = spX;
+      this->setpoints[tail][1] = spY;
+      this->tail++;
+      this->items++;
       return true;
     }
     else
@@ -60,11 +60,11 @@ boolean SPQueue::push(int spX, int spY)
 int* SPQueue::pop()
 // Retornar primero y quitar de la lista
 {
-  if(items > 0) // Si todavia hay elementos en la cola
+  if(this->items > 0) // Si todavia hay elementos en la cola
   {
-    head++; // Quitar primero
-    items--; // Decrementar numero de items
-    return setpoints[head-1]; // Retornar puntero
+    this->head++; // Quitar primero
+    this->items--; // Decrementar numero de items
+    return this->setpoints[this->head-1]; // Retornar puntero
   }
   else
     return 0;

@@ -35,8 +35,8 @@
 
 #define ES_PIN1 2 // Pin para endstop de direccion X
 #define ES_PIN2 3 // Pin para endstop de direccion Y
-#define OK_PIN A0 // Pin para led de encendido
-#define ERR_PIN A1 // Pin para led de errores
+//#define OK_PIN A0 // Pin para led de encendido
+//#define ERR_PIN A1 // Pin para led de errores
 #define MAXPOSX 14900 // Maxima posicion a desplazarse en X
 #define MAXPOSY 14400 // Maxima posicion a desplazarse en Y
 
@@ -44,20 +44,19 @@
 VL53L0X sensor;
 
 // Motores
-//BYJ48 motor1(8,9,10,11);
-//BYJ48 motor2(4,5,6,7);
+BYJ48 motor1(4,5,6,7); // Motor izq.
+BYJ48 motor2(8,9,10,11); // Motor der.
 
-BYJ48 motor1(11,10,9,8);
-BYJ48 motor2(7,6,5,4);
 
 // Cola de setpoints
 SPQueue *queue = 0;
 
-boolean scanning = false;
+boolean scanning = false; // Habilita o deshabilita el muestreo del sensor
+boolean moving = false; // Habilita las instrucciones de la ISR del TIMER2 (Para accionar motores)
 int pos[2] = {MAXPOSX,MAXPOSY}; // Posicion inicial del sensor (se asume)
 int* sp; // Setpoint (inicialmente debe ester en 0,0)
 int vSweep = 200; // Pasos de separacion entre cada pasada horizontal (divisor de MAXPOSY)
-byte motorSpeed = 12; // Valor del registro de comparacion para ISR valor = 16MHz/1024/freq 
+byte motorSpeed = 12; // Valor defeecto del registro de comparacion para ISR valor = 16MHz/1024/freq 
 int samplePeriod = 200; // Periodo de muestreo del sensor
 unsigned long previousMillis = 0;
 
@@ -72,34 +71,20 @@ void setup(){
 
   pinMode(ES_PIN1,INPUT);
   pinMode(ES_PIN2,INPUT);
-  pinMode(OK_PIN,OUTPUT);
-  pinMode(ERR_PIN,OUTPUT);
-
-  // Verificar estado de los interruptores de fin de carrera
-  if(digitalRead( ES_PIN1 ) == LOW) pos[0] = 0;
-  if(digitalRead( ES_PIN2 ) == LOW) pos[1] = 0;
+  //pinMode(OK_PIN,OUTPUT);
+  //pinMode(ERR_PIN,OUTPUT);
 
   goHome(); // Se ingresa como setpoint el origen (0,0)
 
-  noInterrupts();
-  // Configuracion del TIMER 2
-  TCCR2A = 0; // Normal operation
-  TCCR2B = 0; // Normal operation
-  TCNT2 = 0; // Inicializar en 0
-  OCR2A = motorSpeed; // Registro de comparacion
-  TCCR2A |= (1 << WGM21); // Modo CTC
-  TCCR2B |= (1 << CS20); // 1024 prescaler
-  TCCR2B |= (1 << CS21); // 1024 prescaler
-  TCCR2B |= (1 << CS22); // 1024 prescaler
-  TIMSK2 |= (1 << OCIE2A); // Habilitar int.
-  interrupts();
+  // Para que no se mueva en el inicio. Si se desea volver al home se puede con el comando correspondiente
+  pos[0] = 0;
+  pos[1] = 0;
 
-  // Interrupciones para endstops
-  attachInterrupt(0, es1_activated, FALLING); // Int. para pin 2
-  attachInterrupt(1, es2_activated, FALLING); // Int. para pin 3
+  // Configurar registros de interrupcion
+  configureSpeed(motorSpeed);
 
   // Encender led de status
-  digitalWrite(OK_PIN,HIGH);
+  //digitalWrite(OK_PIN,HIGH);
 
   
   /*
@@ -126,53 +111,54 @@ void es2_activated(){ // Interrupcion por activacion del endstop de direccion Y
   pos[1] = 0; // Restablecer posicion vertical
 }
 
-ISR(TIMER2_COMPA_vect){ // Interrupcion por timer 2 (1 ms) - Control de motores
-  if(queue == 0) return; // No hacer nada si el objeto no esta creado
-
-  if(pos[0] == sp[0] && pos[1] == sp[1]){ // Si se alcanza el setpoint
-    if(queue->itemCount() > 0) // Si hay otro setpoint al que ir
-      sp = queue->pop(); // Sacar nuevo setpoint de la cola
-    else{ // Si no hay mas setpoints, apagar steppers y salir
-      motor1.disable();
-      motor2.disable();
-      scanning = false;
+ISR(TIMER2_COMPA_vect){ // Interrupcion por timer 2 - Control de motores
+  if(moving){ // Para deshabilitar el uso de la cola de setpoint en interrupciones
+    if(pos[0] == sp[0] && pos[1] == sp[1]){ // Si se alcanza el setpoint
+      if(queue->itemCount() > 0) // Si hay otro setpoint al que ir
+        sp = queue->pop(); // Sacar nuevo setpoint de la cola
+      else{ // Si no hay mas setpoints, apagar steppers y salir
+        motor1.disable();
+        motor2.disable();
+	moving = false;
+        return;
+      }
+    }
+    if(pos[0] < sp[0]){ // Mover izquierda
+      motor1.stepCCW();
+      motor2.stepCCW();
+      pos[0]++;
+      return;
+    }
+    if(pos[0] > sp[0]){ // Mover derecha
+      motor1.stepCW();
+      motor2.stepCW();
+      pos[0]--;
+      return;
+    }
+    if(pos[1] < sp[1]){ // Mover arriba
+      motor1.stepCW();
+      motor2.stepCCW();
+      pos[1]++;
+      return;
+    }
+    if(pos[1] > sp[1]){ // Mover abajo
+      motor1.stepCCW();
+      motor2.stepCW();
+      pos[1]--;
       return;
     }
   }
-  if(pos[0] < sp[0]){ // Mover izquierda
-    motor1.stepCW();
-    motor2.stepCW();
-    pos[0]++;
-    return;
-  }
-  if(pos[0] > sp[0]){ // Mover derecha
-    motor1.stepCCW();
-    motor2.stepCCW();
-    pos[0]--;
-    return;
-  }
-  if(pos[1] < sp[1]){ // Mover arriba
-    motor1.stepCW();
-    motor2.stepCCW();
-    pos[1]++;
-    return;
-  }
-  if(pos[1] > sp[1]){ // Mover abajo
-    motor1.stepCCW();
-    motor2.stepCW();
-    pos[1]--;
-    return;
-  }
 }
 
-void scanningQueue(){ // Crear cola de posiciones para barrido izq-der y abajo-arriba
-  scanning = false;
+void scanningQueue(){ // Crear cola de posiciones para barrido izq-der y abajo-arriba iniciando desde la pos. vert. actual
+  scanning = false; // Deberia estar en false antes
+  moving = false; // Deshabilitar cuerpo de ISR
   // Borrar y generar lista
   if(queue != 0)
     delete queue;
   queue = new SPQueue(2*round(MAXPOSY/vSweep)+5); // Inicializar cantidad de setpoints +5 por seguridad
 
-  for(int vPos = 0; vPos <= MAXPOSY-vSweep;){ // Para cada pasada (incrementar dentro del loop)
+  for(int vPos = pos[1]; vPos <= MAXPOSY-vSweep;){ // Para cada pasada (incrementar dentro del loop)
     // Ir de derecha a izquierda
     queue->push(0,vPos);
     queue->push(MAXPOSX,vPos);
@@ -183,31 +169,54 @@ void scanningQueue(){ // Crear cola de posiciones para barrido izq-der y abajo-a
     vPos+=vSweep; // Siguiente pasada
   }
   sp = queue->pop(); // Asignar el primero para empezar
+
+  // Al iniciar escaneo, deshabilitar interrupciones de sensores de fin de carrera por si se desconectan
+  detachInterrupt(0);
+  detachInterrupt(1);
   scanning = true;
+  moving = true;
 }
 
 void allStop(){ // Detener y borrar cola de setpoints
-  scanning = false;
+  scanning = false; // Detener muestreo de distancia
+  moving = false; // Para que no interrumpa durante la operacion sigte.
   if(queue != 0)
     delete queue;
   queue = new SPQueue(2); // Se precisa solo un elemento, pero agrego otro por seguridad
-  queue->push(pos[0],pos[1]);
-  sp = queue->pop();  
+  queue->push(pos[0],pos[1]); 
+  sp = queue->pop(); // Poner como setpoint la posicion actual
+  moving = true; // Luego, la ISR lo vuelve a false
 }
 
 void goHome(){ // Volver al 0,0
+  // Deshabilitar medicion de distancia y cuerpo de ISR
   scanning = false;
+  moving = false;
+
+  // Reiniciar la posicion por si hubo patinamiento
+  pos[0] = MAXPOSX;
+  pos[1] = MAXPOSY;
+
+  // Verificar estado de los interruptores de fin de carrera (Tienen logica negativa)
+  if(digitalRead( ES_PIN1 ) == LOW) pos[0] = 0;
+  if(digitalRead( ES_PIN2 ) == LOW) pos[1] = 0;
+
+  // Habilitar interrupciones para endstops
+  attachInterrupt(0, es1_activated, FALLING); // Int. para pin 2
+  attachInterrupt(1, es2_activated, FALLING); // Int. para pin 3
+
+  
   if(queue != 0)
     delete queue;
   queue = new SPQueue(2); // Se precisa solo un elemento, pero agrego otro por seguridad
   queue->push(0,0); // Ir al origen
   sp = queue->pop();
+  moving = true; // Habilitar nuevamente el cuerpo de la ISR
 }
 
 
-
 void configureSpeed(byte timerCnt){ // Cambiar la velocidad de los motores
-  if(scanning) allStop(); // Si estaba escaneando, detener
+  moving = false; // Deshabilitar el cuerpo de la ISR (Aunque luego se deshabilita la ISR completa)
   motorSpeed = timerCnt; // Actualizar variable global
   noInterrupts();
   // Configuracion del TIMER 2
@@ -220,9 +229,11 @@ void configureSpeed(byte timerCnt){ // Cambiar la velocidad de los motores
   TCCR2B |= (1 << CS21); // 1024 prescaler
   TCCR2B |= (1 << CS22); // 1024 prescaler
   TIMSK2 |= (1 << OCIE2A); // Habilitar int.
-  interrupts();
+  interrupts(); // Habilitar interrupciones nuevamente
+  moving = true; // Habilitar ejecucion del cuerpo de la ISR
 }
 
+/*
 void error(){ // Si algo sale mal, desactivar todo y encender led de error
   if(queue != 0)
     delete queue;
@@ -231,6 +242,7 @@ void error(){ // Si algo sale mal, desactivar todo y encender led de error
   digitalWrite(ERR_PIN,HIGH);
   while(1); // Quedar aca hasta reiniciar
 }
+*/
 
 void serialEvent(){ // Interrupcion de puerto serie
 
@@ -249,6 +261,17 @@ void serialEvent(){ // Interrupcion de puerto serie
     case 'c': // Volver a origen     
       goHome();
       Serial.println("c"); // Ack
+      break;
+    case 'n': // Setear home aqui
+      moving = false; // Deshabilitar ISR durante las sgtes instrucciones
+      pos[0] = 0; pos[1] = 0; // Setear home
+      if(queue != 0)
+        delete queue;
+      queue = new SPQueue(2); // Se precisa solo un elemento, pero agrego otro por seguridad
+      queue->push(0,0); // Para que no vaya al setpoint anterior
+      sp = queue->pop();
+      moving = true; // La ISR lo vuelve a false 
+      Serial.println("n");
       break;
 
     // Solicitudes
@@ -280,20 +303,28 @@ void serialEvent(){ // Interrupcion de puerto serie
     // Comandos con argumento
     case 'i': // Agregar setpoint a la cola
       arg = Serial.readStringUntil('\n'); // Leer argumento
-      int sep,x,y;
-      sep = arg.indexOf(","); // Separador
-      x = arg.substring(0,sep).toInt();
-      y = arg.substring(sep+1).toInt();
-      boolean res; // Resultado de intentar poner un nuevo setpoint
-      if(queue != 0) // Si la cola esta creada
-        res = queue->push(x,y);
-      if(res){ // Si se pudo hacer la operacion
-        if(queue->itemCount() == 1) // Si es el unico set point, ir a ese
-          sp = queue->pop();
-        Serial.print("i"); // Ack
-        Serial.print(x); // Ack
-        Serial.print(","); // Ack
-        Serial.println(y); // Ack
+      if( arg != "" ){ // Si el argumento no esta vacio
+        int sep, x, y;
+        sep = arg.indexOf(","); // Separador
+        x = arg.substring(0,sep).toInt(); // Posicion X
+        y = arg.substring(sep+1).toInt(); // Posicion Y
+        // Limitar valores al rango de trabajo del escaner
+        x = x < 0 ? 0 : x > MAXPOSX ? MAXPOSX : x;
+        y = y < 0 ? 0 : y > MAXPOSY ? MAXPOSY : y;
+        boolean res; // Resultado de intentar poner un nuevo setpoint
+        //
+        // Borrar cola de mensajes?
+        //
+        if(queue != 0){ // Si la cola esta creada
+          moving = false;
+          delete queue;
+          queue = new SPQueue(2);
+          res = queue->push(x,y);
+        }
+        if(res){ // Si se pudo hacer la operacion    
+          moving = true; // Habilitar movimiento de motores      
+          Serial.println("i"); // Ack        
+        }
       }
       break;
     case 'j': // Cambiar velocidad de los steppers
@@ -311,6 +342,19 @@ void serialEvent(){ // Interrupcion de puerto serie
       vSweep = arg.toInt();
       Serial.println("l"); // Ack
       break;
+    case 'm': // Setear posicion actual manualmente
+      arg = Serial.readStringUntil('\n'); // Leer argumento
+      if( arg != "" ){ // Si el argumento no esta vacio
+        int sep, x, y;
+        sep = arg.indexOf(","); // Separador
+        x = arg.substring(0,sep).toInt(); // Posicion X
+        y = arg.substring(sep+1).toInt(); // Posicion Y
+        // Limitar valores al rango de trabajo del escaner
+        pos[0] = x < 0 ? 0 : x > MAXPOSX ? MAXPOSX : x;
+        pos[1] = y < 0 ? 0 : y > MAXPOSY ? MAXPOSY : y;        
+        Serial.println("m"); // Ack        
+      }
+      break;
     default: 
       break;
    }
@@ -321,11 +365,11 @@ void serialEvent(){ // Interrupcion de puerto serie
     previousMillis = millis();
     if(scanning){
       // Mostrar posision y lectura por serie
-      Serial.print("a"); // Prefijo del dato
+      //Serial.print("a"); // Prefijo del dato
       Serial.print(pos[0]);
       Serial.print(",");
       Serial.print(pos[1]);
-      Serial.print(",");
+      Serial.println(",");
       //  if (sensor.timeoutOccurred()) { Serial.println("ST"); }
       Serial.println(sensor.readRangeSingleMillimeters());
     }
