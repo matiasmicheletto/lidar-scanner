@@ -28,3 +28,10 @@
   ******************************************************************************
   */
 
+.toast-red{
+  background-color: red;
+}
+
+.toast-green{
+  background-color: green;
+}

@@ -56,7 +56,7 @@
                         <div class="tab_header col s12">
                           <ul class="tabs">
                             <li class="tab col s6"><a class="active" href="#devices_table">Dispositivos</a></li>
-                            <li class="tab col s6"><a href="#buttons">Control</a></li>
+                            <li class="tab col s6"><a href="#controls">Control</a></li>
                             <li class="tab col s6"><a href="#logs_table">Registros</a></li>
                           </ul>
                         </div>
@@ -71,11 +71,99 @@
                             </table>
                         </div>                    
 
-                        <div id="buttons" class="col s12">
-                            <div class="row"><a id="btnStart" class="waves-effect waves-light btn blue"><i class="material-icons left">play_arrow</i>Iniciar</a></div>
-                            <div class="row"><a id="btnStop" class="waves-effect waves-light btn red"><i class="material-icons left">stop</i>Detener</a></div>
-                            <div class="row"><a id="btnHome" class="waves-effect waves-light btn green"><i class="material-icons left">home</i>Origen</a></div>
+                        <div id="controls" class="col s12">
+
+                          <br><br>
+                          <div id="buttons" class="row">
+                              <div class="col s4"><a id="btnStart" class="waves-effect waves-light btn-large blue"><i class="material-icons left">play_arrow</i>Iniciar</a></div>
+                              <div class="col s4"><a id="btnStop" class="waves-effect waves-light btn-large red"><i class="material-icons left">stop</i>Detener</a></div>
+                              <div class="col s4"><a id="btnHome" class="waves-effect waves-light btn-large green"><i class="material-icons left">home</i>Origen</a></div>
+                          </div>
+
+                          <div class="row">
+                            <div class="col s3">
+                              <label>Velocidad de avance</label>
+                            </div>
+                            <div class="col s9">
+                              <form action="#">
+                                <p class="range-field">
+                                  <input type="range" id="stepper_speed" min="100" max="1400" step="100"/>
+                                </p>
+                              </form>
+                            </div>
+                          </div>
+
+                          <div class="row">
+                            <div class="col s3">
+                              <label>Periodo de muestreo</label>
+                            </div>
+                            <div class="col s9">
+                              <form action="#">
+                                <p class="range-field">
+                                  <input type="range" id="sample_period" min="100" max="1000" step="100"/>
+                                </p>
+                              </form>
+                            </div>
+                          </div>
+
+                          <div class="row">
+                            <div class="col s3">
+                              <label>Avance por pasada</label>
+                            </div>
+                            <div class="col s9">
+                              <form action="#">
+                                <p class="range-field">
+                                  <input type="range" id="vert_sweep" min="100" max="1000" step="100"/>
+                                </p>
+                              </form>
+                            </div>
+                          </div>
+
+                          <div class="row">
+                            <div class="col s3">
+                              <label>Ir a posición:</label>
+                            </div>
+                            <div class="col s3">
+                              <div class="input-field inline">
+                                <input id="inputSPX" type="number" class="validate">
+                                <label for="inputSPX">X</label>
+                              </div>
+                            </div>
+                            <div class="col s3">
+                              <div class="input-field inline">
+                                <input id="inputSPY" type="number" class="validate">
+                                <label for="inputSPY">Y</label>
+                              </div>
+                            </div>
+                            <div class="col s3">
+                              <div class="row"><a id="btnSendSP" class="waves-effect waves-light btn-floating green"><i class="material-icons left">send</i></a></div>
+                            </div>
+                          </div>
+
+                          <div class="row">
+                            <div class="col s3">
+                              <label>Conf. posición:</label>
+                            </div>
+                            <div class="col s3">
+                              <div class="input-field inline">
+                                <input id="inputPosX" type="number" class="validate">
+                                <label for="inputPosX">X</label>
+                              </div>
+                            </div>
+                            <div class="col s3">
+                              <div class="input-field inline">
+                                <input id="inputPosY" type="number" class="validate">
+                                <label for="inputPosY">Y</label>
+                              </div>
+                            </div>
+                            <div class="col s3">
+                              <div class="row"><a id="btnSendPos" class="waves-effect waves-light btn-floating blue"><i class="material-icons left">send</i></a></div>
+                            </div>
+                          </div>
+
                         </div>
+
+                          
                     
                         <div id="logs_table" class="col s12">
                             <table id="logs">
@@ -91,10 +179,22 @@
                             <p id="statusMsg">Mensajes</p>
                         </div>
 
-                </div>
+                </div> <!-- row -->
+
+              </div> <!-- container -->
                 
+              <div id="confirm_modal" class="modal">
+                <div class="modal-content">
+                  <h4>Confirmación</h4>
+                  <p>¿Desea guardar los datos adquiridos?</p>                  
+                </div>
+                <div class="modal-footer">
+                  <a id="btnSaveResults" class="modal-close waves-effect waves-green btn green">Guardar</a>
+                </div>
+              </div>
+
             </center>
-        </div>
+        </div> <!-- app -->
 
         <script type="text/javascript" src="cordova.js"></script>
         <script type="text/javascript" src="js/index.js"></script>

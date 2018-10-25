@@ -31,40 +31,108 @@
 var app = {
     connectedDeviceId: "", // Id del dispositivo conectado
     csvData: "", // Arreglo de datos recibidos
-    listing: true, // Variable de estado
+    listing: true, // Vble de estado para corregir el duplicado de callback onShow de M.Tabs
+    scanning: false, // Vble de estado para bloquear algunas funciones durante el escaneo
+    modals: "", // Vble para controlar apertura del modal
 
     init: function() { // Inicializar app
         // Iniciar pestañas
-        M.Tabs.init(document.querySelector('.tabs'), {swipeable: true, onShow: function(current){                    
-          // Al pasar a la pestaña de registros, listar
-          if(current.id == "logs_table" && app.listing){
-            app.listing = false;
-            app.updateLogList();
-            setTimeout(function(){app.listing = true},500); // Para que no liste dos veces seguidas
-          }
+        M.Tabs.init(document.querySelector('.tabs'), {swipeable: false, onShow: function(current){                    
           // Al volver a la pestaña de dispositivos, actualizar lista si no esta conectado
           if(current.id == "devices_table" && app.listing && app.connectedDeviceId==""){
             app.listing = false;
             app.scan();
-            setTimeout(function(){app.listing = true},500);
+            setTimeout(function(){app.listing = true},500); // Rehabilitar callback despues de 500ms
           }
-        }}); 
-        app.scan(); // Buscar dispositivos BLE para conectarse    
-        // Establecer callbacks para los botones
+          // Al ir a la pestaña de controles, actualizar variables del sistema
+          if(current.id == "controls" && app.connectedDeviceId != "" && !app.scanning){
+            app.sendText("e"); // Velocidad de avance
+            app.sendText("f"); // Periodo de muestreo
+            app.sendText("g"); // Avance de carro por pasada
+          }
+          // Al pasar a la pestaña de registros, listar
+          if(current.id == "logs_table" && app.listing){
+            app.listing = false; // Deshabilitar el callback
+            app.updateLogList();
+            setTimeout(function(){app.listing = true},500); // Rehabilitar callback despues de 500ms
+          }
+        }});
+
+        app.modals = M.Modal.init(document.querySelectorAll('.modal'), {}); // Inicializar modals
+        
+        app.scan(); // Buscar dispositivos BLE para conectarse  
+
+        // Establecer callbacks para los controles
         document.getElementById("btnStart").addEventListener('click',function(){
-          app.sendText("a");
+          app.sendText("a"); // Esperar a la respuesta para confirmar que se recibio la orden
+          setTimeout(function(){ // Espera de 2 segundos
+            if(!app.scanning){ // Si luego de un tiempo no se recibe respuesta
+              app.log("El dispositivo no responde.");
+            }
+          },2000);
         },false);
+        
         document.getElementById("btnStop").addEventListener('click',function(){
           app.sendText("b");
           if(app.csvData != "") // Si se obtuvieron datos
-            app.saveResult(); // Guardar registro
+            //app.saveResult(); // Guardar registro
+            app.modals[0].open(); // Mostrar dialogo de confirmacion
           else
             app.log("Registro vacio!");
-        },false);
+        },false);    
+        
         document.getElementById("btnHome").addEventListener('click',function(){
           app.sendText("c");
         },false);
-        app.log('Aplicacion lista!');        
+
+        document.getElementById("btnSaveResults").addEventListener('click',function(){
+          app.saveResult();
+        },false);
+
+        document.getElementById("stepper_speed").addEventListener('change',function(){
+          if(!app.scanning){ // No se debe configurar esta variable durante el escaneo
+            var ocr1a = 16e6/1024/this.value; // Valor que va al registro de comp del arduino
+            app.sendText("j"+ocr1a.toFixed(0));
+            app.log("Frecuencia de motores = "+this.value+" Hz");
+          }
+        },false);
+
+        document.getElementById("sample_period").addEventListener('change',function(){
+          app.sendText("k"+this.value); 
+          app.log("Periodo de muestreo = "+this.value+" ms");
+        },false);
+
+        document.getElementById("vert_sweep").addEventListener('change',function(){
+          app.sendText("l"+this.value);
+          app.log("Avance vertical = "+this.value+" steps");
+        },false);
+
+        document.getElementById("btnSendSP").addEventListener('click',function(){
+          // Obtener posicion deseada de los inputs
+          var spX = document.getElementById("inputSPX").value;
+          var spY = document.getElementById("inputSPY").value;
+          //app.log("Nuevo set point = "+spX+","+spY);
+          if(!app.scanning && spX !== "" && spY !== "") // Si no esta escaneando y se ingresaron datos
+            app.sendText("i"+spX+","+spY); // Enviar comando
+        },false);
+
+        document.getElementById("btnSendPos").addEventListener('click',function(){
+          // Obtener posicion deseada de los inputs
+          var posX = document.getElementById("inputPosX").value;
+          var posY = document.getElementById("inputPosY").value;
+          //app.log("Configuracion manual de pos = "+posX+","+posY);
+          if(!app.scanning && posX !== "" && posY !== "") // Si no esta escaneando
+            app.sendText("m"+posX+","+posY); // Enviar comando
+        },false);
+
+        // Ajustar valores de los slider de acuerdo a la configuracion del scanner
+        // (La respuesta de estos comandos se procesa en el callback app.OnData())
+        //app.sendText("e"); // Pedir velocidad de avance
+        //app.sendText("f"); // Pedir periodo de muestreo
+        //app.sendText("g"); // Pedir valor de avance de carro por pasada
+
+        // Inicializacion lista
+        app.log('Aplicacion lista!');
     },
 
     scan: function(){ // Escanear dispositivos BLE cercanos
@@ -160,20 +228,79 @@ var app = {
     },
 
     onData: function(str){ // Callback que se ejecuta al recibir datos
-      if(str.includes('a')){ // Ack
+      // Extraer caracteres de comandos
+      if(str.includes('a')){ // Ack inicio escaneo
         app.log('Escaneo iniciado.');
+        app.scanning = true;
         return;
       }
-      if(str.includes('b')){ // Ack
+      if(str.includes('b')){ // Ack escaneo detenido
         app.log('Escaneo detenido.'); 
+        app.scanning = false;
         return;
       }
-      if(str.includes('c')){ // Ack
+      if(str.includes('c')){ // Ack home
         app.log('Origen.'); 
-        return
+        app.scanning = false;
+        return;
       }
+      
+      // Respuesta de variables
+      if(str.includes('d')){ // Limites del espacio de escaneo              
+        app.log("Tope de recorrido = "+str.replace('d',''));
+        return;
+      }
+      if(str.includes('e')){ // Velocidad de los steppers
+        var v = parseInt(str.replace('e','')); // Convertir a valor numerico
+        var freq = 16e6/1024/v;
+        document.getElementById("stepper_speed").value = Math.round(freq);
+        //app.log("Velocidad de avance = "+freq.toFixed(2)+" Hz.");
+        return;
+      }
+      if(str.includes('f')){ // Periodo de muestreo del sensor        
+        //app.log("Periodo de muestreo = "+str.replace('f','')+" ms.");
+        document.getElementById("sample_period").value = Math.round(parseInt(str.replace('f','')));
+        return;
+      }
+      if(str.includes('g')){ // Avance vertical del carro        
+        //app.log("Avance de pasada = "+str.replace('g','')+" steps");
+        document.getElementById("vert_sweep").value = Math.round(parseInt(str.replace('g','')));
+        return;
+      }
+      if(str.includes('h')){ // Posicion del carro        
+        app.log("Posición actual = "+str.replace('h',''));
+        return;        
+      }
+
+      // Ack seteo de variables
+      if(str.includes('i')){ // Agregar nuevo setpoint        
+        app.log('Setpoint ingresado correctamente: '+document.getElementById("inputSPX").value+','+document.getElementById("inputSPY").value);
+        document.getElementById("inputSPX").value = "";
+        document.getElementById("inputSPY").value = ""; 
+        return;
+      }
+      if(str.includes('j')){ // Cambio de velocidad de los steppers
+        app.log('Velocidad de avance configurada: '+document.getElementById("stepper_speed").value+' Hz.'); 
+        return;
+      }
+      if(str.includes('k')){ // Cambio de periodo de muestreo
+        app.log('Periodo de muestreo modificado: '+document.getElementById("sample_period").value+' ms.'); 
+        return;
+      }
+      if(str.includes('l')){ // Cambio de avance vertical por pasada
+        app.log('Paso de avance vertical modificado: '+document.getElementById("vert_sweep").value+' steps.'); 
+        return;
+      }
+      if(str.includes('m')){ // Forzar posicion actual
+        app.log('Posicion actual modificada correctamente: '+document.getElementById("inputPosX").value+','+document.getElementById("inputPosY").value);
+        document.getElementById("inputPosX").value = "";
+        document.getElementById("inputPosY").value = "";
+        return;
+      }
+
+      // En cualquier otro caso, guardar dato recibido
       app.csvData = app.csvData + str; // Adjuntar nuevo dato
-      //app.log(str);
+      app.log(str);
     },
 
     saveResult: function(){ // Guardar el valor de csvData en un archivo del dispositivo
