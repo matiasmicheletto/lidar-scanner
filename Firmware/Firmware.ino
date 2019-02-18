@@ -50,9 +50,9 @@ boolean scanning = false; // Habilita o deshabilita el muestreo del sensor
 boolean moving = false; // Habilita las instrucciones de la ISR del TIMER2 (Para accionar motores)
 int pos[2] = {MAXPOSX,MAXPOSY}; // Posicion inicial del sensor (se asume)
 int sp[2] = {0,0}; // Setpoint (inicialmente debe ester en 0,0)
-int hSweep = 200; // Pasos de separacion entre cada pasada horizontal (divisor de MAXPOSY)
+int hSweep = 300; // Pasos de separacion entre cada pasada horizontal (divisor de MAXPOSY)
 byte motorSpeed = 12; // Valor defeecto del registro de comparacion para ISR valor = 16MHz/1024/freq 
-int samplePeriod = 200; // Periodo de muestreo del sensor
+int samplePeriod = 250; // Periodo de muestreo del sensor
 unsigned long previousMillis = 0;
 
 void setup(){
