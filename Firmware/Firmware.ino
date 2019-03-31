@@ -36,8 +36,10 @@
 #define ES_PIN2 3 // Pin para endstop de direccion Y
 //#define OK_PIN A0 // Pin para led de encendido
 //#define ERR_PIN A1 // Pin para led de errores
-#define MAXPOSX 14600 // Maxima posicion a desplazarse en X (446mm)
-#define MAXPOSY 13300 // Maxima posicion a desplazarse en Y (410mm)
+//#define MAXPOSX 14600 // Maxima posicion a desplazarse en X (446mm)
+//#define MAXPOSY 13300 // Maxima posicion a desplazarse en Y (410mm)
+#define MAXPOSX 13000 // Maxima posicion a desplazarse en X (446mm)
+#define MAXPOSY 11700 // Maxima posicion a desplazarse en Y (410mm)
 
 // Sensor laser
 VL53L0X sensor;
