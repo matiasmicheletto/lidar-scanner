@@ -1,8 +1,7 @@
 #include "BYJ48.h"
 
-// Secuencias
-const boolean BYJ48::sequences[8][4] = {
-                      // half-step 0-7
+// Secuencias de steps
+const boolean BYJ48::sequences[8][4] = { 
                       {false, false, false, true },
                       {false, false, true, true},
                       {false, false, true, false },
@@ -11,19 +10,10 @@ const boolean BYJ48::sequences[8][4] = {
                       {true, true, false, false},
                       {true, false, false, false },
                       {true, false, false, true}
-                      /* full-step low torque 8-11
-                      {false, false, false, true },
-                      {false, false, true, false },
-                      {false, true, false, false },
-                      {true, false, false, false },
-                      // full-step high torque 12-15
-                      {false, false, true, true },
-                      {false, true, true, false },
-                      {true, true, false, false },
-                      {true, false, false, true }*/
-                    };
+                   };
 
-BYJ48::BYJ48(int In1, int In2, int In3, int In4){
+
+BYJ48::BYJ48(int In1, int In2, int In3, int In4, boolean mode){
     // Numero de pines de salida
     inputPins[0] = In1;
     inputPins[1] = In2;
@@ -38,24 +28,37 @@ BYJ48::BYJ48(int In1, int In2, int In3, int In4){
 
     // Disponer salida en step inicial (HS)
     currentStep = 0;
+    
+    // Configurar modo inicial
+    halfSteppingMode = mode;
+    
+    // Actualizar salidas
     writeStep();
 }
 
-void BYJ48::stepCW(){
-    // Incrementar paso
-    currentStep = currentStep >= 7 ? 0 : currentStep+1;
-    writeStep();
-}
 
-void BYJ48::stepCCW(){
-    // Decrementar paso
-    currentStep = currentStep <= 0 ? 7 : currentStep-1;
-    writeStep();
-}
-
-void BYJ48::writeStep(){
+void BYJ48::writeStep(){ // Actualiza salida
     digitalWrite(inputPins[0], sequences[currentStep][0]);
     digitalWrite(inputPins[1], sequences[currentStep][1]);
     digitalWrite(inputPins[2], sequences[currentStep][2]);
     digitalWrite(inputPins[3], sequences[currentStep][3]);
 }
+
+void BYJ48::setMode(boolean mode){ // Alternar modo half o full
+    halfSteppingMode = mode;
+    currentStep = 0;
+    writeStep();
+}
+
+void BYJ48::stepCW(){ // Incrementar paso
+    currentStep = currentStep >= (halfSteppingMode ? 7:6) ? 0 : currentStep+(halfSteppingMode ? 1:2);
+    writeStep();
+}
+
+void BYJ48::stepCCW(){ // Decrementar paso
+    currentStep = currentStep <= 0 ? (halfSteppingMode ? 7:6) : currentStep-(halfSteppingMode ? 1:2);
+    writeStep();
+}
+
+
+
